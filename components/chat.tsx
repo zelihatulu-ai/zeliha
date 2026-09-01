@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, User, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 type Message = {
@@ -38,11 +38,14 @@ export function Chat() {
     setIsLoading(true);
 
     try {
-      const apiMessages = messages.map(m => ({
+      // API mesaj formatını hazırla (Gemini API formatına uygun parts dizisi)
+      const apiMessages = messages.map((m) => ({
         role: m.role,
         parts: [{ text: m.content }]
       })).concat({ role: 'user', parts: [{ text: userMessage }] });
 
+      // İstemci tarafında hiçbir AI SDK'sı veya gizli anahtar kullanılmaz
+      // Sadece sunucu tarafındaki /api/chat uç noktasına istek atılır
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -51,15 +54,23 @@ export function Chat() {
         body: JSON.stringify({ messages: apiMessages }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('API yanıt vermedi');
+        throw new Error(data.error || 'Sunucudan geçersiz yanıt alındı.');
       }
 
-      const data = await response.json();
       setMessages((prev) => [...prev, { role: 'model', content: data.text }]);
-    } catch (error) {
-      console.error(error);
-      setMessages((prev) => [...prev, { role: 'model', content: 'Üzgünüm, şu an bağlantıda bir sorun yaşıyorum. Lütfen tekrar dener misin?' }]);
+    } catch (error: unknown) {
+      console.error('Chat error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Bağlantıda bir sorun oluştu.';
+      setMessages((prev) => [
+        ...prev, 
+        { 
+          role: 'model', 
+          content: `⚠️ **Hata:** ${errorMessage}` 
+        }
+      ]);
     } finally {
       setIsLoading(false);
     }

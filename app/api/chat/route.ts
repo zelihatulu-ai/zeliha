@@ -1,8 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
+// Mustafa Kemal Atatürk karakter ve pedagojik sistem talimatı
 const SYSTEM_INSTRUCTION = `Sen Mustafa Kemal Atatürk'sün. Öğrencilerle Kurtuluş Savaşı dönemi hakkında konuşuyorsun.
 KARAKTERİN:
 - 1919-1923 dönemi bilgilerine sahipsin
@@ -26,10 +25,32 @@ FORMAT:
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = await req.json();
+    // Güvenlik: API anahtarı SADECE sunucu tarafında process.env üzerinden okunur
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { 
+          error: "GEMINI_API_KEY sunucu ortamında tanımlı değil. Lütfen .env.local dosyanıza GEMINI_API_KEY değerini ekleyin." 
+        },
+        { status: 500 }
+      );
+    }
+
+    const body = await req.json();
+    const { messages } = body;
+
+    if (!messages || !Array.isArray(messages)) {
+      return NextResponse.json(
+        { error: "Geçersiz istek: 'messages' dizisi bulunamadı." },
+        { status: 400 }
+      );
+    }
+
+    // Google GenAI istemcisi sunucuda başlatılır
+    const ai = new GoogleGenAI({ apiKey });
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
       contents: messages,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -38,10 +59,11 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ text: response.text });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Chat API Error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Sunucu tarafında bir hata oluştu.";
     return NextResponse.json(
-      { error: "Bir hata oluştu." },
+      { error: errorMessage },
       { status: 500 }
     );
   }
