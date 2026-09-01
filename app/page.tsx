@@ -1,16 +1,20 @@
 import { Chat } from '@/components/chat';
+import { HeaderAuth } from '@/components/header-auth';
 
 export default function Page() {
   return (
     <div className="h-screen w-full bg-[#F5F2ED] flex flex-col overflow-hidden text-[#1A1A1A]">
-      <header className="border-b border-[#1A1A1A]/20 p-4 sm:p-8 flex flex-col sm:flex-row justify-between items-baseline gap-4 sm:gap-0 shrink-0">
+      <header className="border-b border-[#1A1A1A]/20 p-4 sm:p-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
         <div className="flex flex-col">
           <span className="text-xs uppercase tracking-[0.2em] font-sans opacity-60">Tarih Serisi: Bölüm I</span>
           <h1 className="text-4xl sm:text-6xl font-bold tracking-tighter leading-none mt-2 font-serif uppercase">ATATÜRK İLE RÖPORTAJ</h1>
         </div>
-        <div className="text-left sm:text-right">
-          <p className="text-sm italic font-sans">Millî Mücadele ve Bağımsızlık Yolu</p>
-          <p className="text-xs font-sans opacity-40 mt-1">Samsun, 19 Mayıs 1919</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 self-stretch sm:self-auto justify-between sm:justify-end">
+          <div className="text-left sm:text-right">
+            <p className="text-sm italic font-sans">Millî Mücadele ve Bağımsızlık Yolu</p>
+            <p className="text-xs font-sans opacity-40 mt-1">Samsun, 19 Mayıs 1919</p>
+          </div>
+          <HeaderAuth />
         </div>
       </header>
 

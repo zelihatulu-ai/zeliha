@@ -1,5 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getSessionUser } from "@/lib/auth";
 
 // Mustafa Kemal Atatürk karakter ve pedagojik sistem talimatı
 const SYSTEM_INSTRUCTION = `Sen Mustafa Kemal Atatürk'sün. Öğrencilerle Kurtuluş Savaşı dönemi hakkında konuşuyorsun.
@@ -37,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { messages } = body;
+    const { messages, sessionId } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -58,7 +60,29 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    return NextResponse.json({ text: response.text });
+    const aiText = response.text || "";
+
+    // Veritabanı entegrasyonu (PostgreSQL / Prisma): Mesajları ve oturum açan kullanıcıyı kaydet
+    try {
+      if (process.env.DATABASE_URL) {
+        const currentUser = await getSessionUser();
+        const lastUserMessage = messages[messages.length - 1];
+        const userText = lastUserMessage?.parts?.[0]?.text || "";
+
+        if (userText) {
+          await prisma.chatMessage.createMany({
+            data: [
+              { role: "user", content: userText, userId: currentUser?.id || null, sessionId: sessionId || null },
+              { role: "model", content: aiText, userId: currentUser?.id || null, sessionId: sessionId || null },
+            ],
+          });
+        }
+      }
+    } catch (dbErr) {
+      console.warn("Veritabanı kayıt uyarısı:", dbErr);
+    }
+
+    return NextResponse.json({ text: aiText });
   } catch (error: unknown) {
     console.error("Chat API Error:", error);
     const errorMessage = error instanceof Error ? error.message : "Sunucu tarafında bir hata oluştu.";
@@ -66,5 +90,22 @@ export async function POST(req: NextRequest) {
       { error: errorMessage },
       { status: 500 }
     );
+  }
+}
+
+export async function GET() {
+  try {
+    const currentUser = await getSessionUser();
+    
+    // Kullanıcının veya genel geçmiş mesajları getir
+    const messages = await prisma.chatMessage.findMany({
+      where: currentUser ? { userId: currentUser.id } : undefined,
+      take: 50,
+      orderBy: { createdAt: "asc" },
+    });
+    return NextResponse.json({ messages });
+  } catch (error: unknown) {
+    console.error("Fetch Messages Error:", error);
+    return NextResponse.json({ error: "Mesajlar yüklenemedi." }, { status: 500 });
   }
 }
